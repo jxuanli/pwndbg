@@ -74,7 +74,7 @@ class KernelVmmap:
             # TODO: I don't think those are necessarily accurate when KASLR is enabled
             #       but I'm not familiar with ARM enough quite yet to find better ways
             address_markers = pwndbg.aglib.symbol.lookup_symbol_addr("address_markers")
-            if address_markers is None:
+            if address_markers is None or pwndbg.aglib.memory.peek(address_markers) is None:
                 return
             sections = [(self.USERLAND, 0)]
             value = 0
@@ -97,7 +97,7 @@ class KernelVmmap:
             self.sections = tuple(sections)
 
     def get_name(self, addr: int) -> str:
-        if addr is None or self.sections is None:
+        if addr is None:
             return None
         for i in range(len(self.sections) - 1):
             name, cur = self.sections[i]
@@ -109,6 +109,8 @@ class KernelVmmap:
         return None
 
     def adjust(self):
+        if self.sections is None:
+            return
         for i, page in enumerate(self.pages):
             name = self.get_name(page.start)
             if name is not None:
