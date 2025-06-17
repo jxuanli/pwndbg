@@ -50,7 +50,8 @@ def pagewalk(vaddr, entry=None):
         "PUD",
         "PGD",
     )
-    if pwndbg.aglib.kernel.paging.uses_5lvl_paging():
+    ops: pwndbg.aglib.kernel.x86_64Ops = pwndbg.aglib.kernel.arch_ops()
+    if ops.uses_5lvl_paging():
         level = 5
         names = (
             "Page",

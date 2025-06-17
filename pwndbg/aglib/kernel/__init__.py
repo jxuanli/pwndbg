@@ -476,7 +476,6 @@ class x86_64Ops(x86Ops):
         return x86_64Ops._kconfig_5lvl_paging()
 
     @staticmethod
-    @requires_kconfig()
     def _kconfig_5lvl_paging() -> bool:
         return kconfig().get("CONFIG_X86_5LEVEL") == "y"
 
@@ -705,6 +704,7 @@ def paging_enabled() -> bool:
         return int(pwndbg.aglib.regs.satp) & (BIT(60) | BIT(61) | BIT(62) | BIT(63)) != 0
     else:
         raise NotImplementedError()
+
 
 def num_numa_nodes_helper():
     node_states = pwndbg.aglib.symbol.lookup_symbol("node_states")

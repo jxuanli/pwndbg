@@ -168,6 +168,7 @@ def load_common_structs():
     header_file_path = pwndbg.commands.cymbol.create_temp_header_file(COMMON_TYPES)
     pwndbg.commands.cymbol.add_structure_from_header(header_file_path, "")
 
+
 @pwndbg.dbg.event_handler(EventType.NEW_MODULE)
 def load_common_structs_on_load():
     if pwndbg.aglib.qemu.is_qemu_kernel():
@@ -198,7 +199,7 @@ MAX_ORDER = 11
 
 
 def get_pcp_struct(pcp_sz) -> str:
-    kconfig = pwndbg.lib.kernel.kconfig()
+    kconfig = pwndbg.aglib.kernel.kconfig()
     defs = []
     if not pwndbg.aglib.kernel.is_earlier_than_version("5.14.0"):
         if pwndbg.aglib.kernel.is_earlier_than_version("6.7.0"):
@@ -209,7 +210,10 @@ def get_pcp_struct(pcp_sz) -> str:
         defs.append("SINCE_V6_0")
     if not pwndbg.aglib.kernel.is_earlier_than_version("6.7.0"):
         defs.append("SINCE_V6_7")
-    for config in ("CONFIG_NUMA", "CONFIG_SMP",):
+    for config in (
+        "CONFIG_NUMA",
+        "CONFIG_SMP",
+    ):
         if config in kconfig:
             defs.append(config)
     result = "\n".join(f"#define {s}" for s in defs)
@@ -409,7 +413,9 @@ def kmem_cache_pad_sz(kconfig) -> int:
     for config in configs:
         if config in kconfig:
             distance -= 8
-    if "CONFIG_HARDENED_USERCOPY" in kconfig or pwndbg.aglib.kernel.is_earlier_than_version("6.2.0"):
+    if "CONFIG_HARDENED_USERCOPY" in kconfig or pwndbg.aglib.kernel.is_earlier_than_version(
+        "6.2.0"
+    ):
         distance -= 8
     return distance
 
@@ -490,20 +496,20 @@ def load_slab_typeinfo():
     if pwndbg.aglib.typeinfo.lookup_types("struct kmem_cache") is not None:
         return
     # this is the kmem_cache SLUB representation for all 5.x and 6.x
-    kconfig = pwndbg.lib.kernel.kconfig()
+    kconfig = pwndbg.aglib.kernel.kconfig()
     defs = []
     if pwndbg.aglib.kernel.is_earlier_than_version("6.2.0"):
         defs.append("BEFORE_V6_2")
     if pwndbg.aglib.kernel.is_earlier_than_version("5.19.0"):
         defs.append("BEFORE_V5_19")
     configs = (
-        "CONFIG_SLUB_TINY", 
+        "CONFIG_SLUB_TINY",
         "CONFIG_SLUB_CPU_PARTIAL",
         "CONFIG_SLAB_FREELIST_HARDENED",
         "CONFIG_NUMA",
         "CONFIG_SLAB_FREELIST_RANDOM",
         "CONFIG_KASAN_GENERIC",
-        "CONFIG_HARDENED_USERCOPY"
+        "CONFIG_HARDENED_USERCOPY",
     )
     for config in configs:
         if config in kconfig:

@@ -48,18 +48,6 @@ def find_kbase(pages) -> int | None:
     return None
 
 
-@pwndbg.aglib.proc.OnlyWithArch(["x86-64"])
-def uses_5lvl_paging() -> bool:
-    if pwndbg.aglib.kernel.has_debug_info():
-        ops: pwndbg.aglib.kernel.x86_64Ops = pwndbg.aglib.kernel.arch_ops()
-        return ops.uses_5lvl_paging()
-    pages = get_memory_map_raw()
-    for page in pages:
-        if page.start & (1 << 63) > 0:
-            return page.start < (0xFFF << (4 * 13))
-    return False
-
-
 guess_physmap = config.add_param(
     "guess-physmap",
     False,
@@ -68,6 +56,7 @@ guess_physmap = config.add_param(
 
 
 def physmap_base() -> int:
+    # TODO: do this use address markers
     if pwndbg.aglib.kernel.has_debug_symbols() and pwndbg.aglib.arch.name == "x86-64":
         result = pwndbg.aglib.symbol.lookup_symbol_addr("page_offset_base")
         if pwndbg.aglib.memory.peek(result):
@@ -76,14 +65,16 @@ def physmap_base() -> int:
             return None
         if result is not None:
             return result
+    # TODO: consider move do this automatically
     if guess_physmap or pwndbg.aglib.arch.name == "aarch64":
         # this is mostly true
         # https://www.kernel.org/doc/Documentation/x86/x86_64/mm.txt
         for page in get_memory_map_raw():
-            if page.start & (1 << 63) > 0:
+            if pwndbg.aglib.kernel.symbol.is_kernel(page.start):
                 return page.start
     print(M.warn("physmap base cannot be determined, resort to default"))
-    if uses_5lvl_paging():
+    ops: pwndbg.aglib.kernel.x86_64Ops = pwndbg.aglib.kernel.arch_ops()
+    if ops.uses_5lvl_paging():
         return 0xFF11000000000000
     return 0xFFFF888000000000
 
@@ -96,7 +87,8 @@ def kbase():
 @pwndbg.aglib.proc.OnlyWithArch(["x86-64"])
 def pagewalk(target, entry=None) -> List[Tuple[int | None, int | None]]:
     level = 4
-    if uses_5lvl_paging():
+    ops: pwndbg.aglib.kernel.x86_64Ops = pwndbg.aglib.kernel.arch_ops()
+    if ops.uses_5lvl_paging():
         level = 5
     base = physmap_base()
     if entry is None:
