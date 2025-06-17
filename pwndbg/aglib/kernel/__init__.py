@@ -57,26 +57,6 @@ def has_debug_info() -> bool:
     )
 
 
-# NOTE: This implies requires_debug_info(), as it is needed for kconfig() to return non-None
-def requires_kconfig(default: D = None) -> Callable[[Callable[P, T]], Callable[P, T | D]]:
-    def decorator(f: Callable[P, T]) -> Callable[P, T | D]:
-        @functools.wraps(f)
-        def func(*args: P.args, **kwargs: P.kwargs) -> T | D:
-            if kconfig():
-                return f(*args, **kwargs)
-
-            # If the user doesn't want an exception thrown when CONFIG_IKCONFIG is
-            # not enabled, they can instead provide a default return value
-            if default is not None:
-                return default
-
-            raise Exception(f"Function {f.__name__} requires CONFIG_IKCONFIG enabled in kernel")
-
-        return func
-
-    return decorator
-
-
 def requires_debug_symbols(default: D = None) -> Callable[[Callable[P, T]], Callable[P, T | D]]:
     def decorator(f: Callable[P, T]) -> Callable[P, T | D]:
         @functools.wraps(f)
@@ -214,15 +194,6 @@ def krelease() -> Tuple[int, ...]:
     raise Exception("Linux version tuple not found")
 
 
-@requires_kconfig()
-@pwndbg.lib.cache.cache_until("start")
-def is_kaslr_enabled() -> bool:
-    if "CONFIG_RANDOMIZE_BASE" not in kconfig():
-        return False
-
-    return "nokaslr" not in kcmdline()
-
-
 @pwndbg.lib.cache.cache_until("start")
 def kbase() -> int | None:
     return pwndbg.aglib.kernel.paging.kbase()
@@ -349,10 +320,8 @@ class x86Ops(ArchOps):
 
 
 class i386Ops(x86Ops):
-    @requires_kconfig()
     def __init__(self) -> None:
-        # https://elixir.bootlin.com/linux/v6.2/source/arch/x86/include/asm/page_32_types.h#L18
-        self._PAGE_OFFSET = int(kconfig()["CONFIG_PAGE_OFFSET"], 16)
+        self._PAGE_OFFSET = pwndbg.aglib.kernel.paging.physmap_base()  # mirroring x86
         self.START_KERNEL_map = self._PAGE_OFFSET
 
     @property
@@ -481,7 +450,7 @@ class x86_64Ops(x86Ops):
 
 
 class Aarch64Ops(ArchOps):
-    @requires_kconfig(default={})
+    @requires_debug_info(default={})
     def __init__(self) -> None:
         page_type = pwndbg.aglib.typeinfo.load("struct page")
         assert page_type is not None, "Type 'struct page' not exists"
@@ -489,14 +458,16 @@ class Aarch64Ops(ArchOps):
         self.STRUCT_PAGE_SIZE = page_type.sizeof
         self.STRUCT_PAGE_SHIFT = int(math.log2(self.STRUCT_PAGE_SIZE))
 
-        self.VA_BITS = int(kconfig()["ARM64_VA_BITS"])
-        self.PAGE_SHIFT = int(kconfig()["CONFIG_ARM64_PAGE_SHIFT"])
+        self.PAGE_SHIFT = int(
+            math.log2(pwndbg.aglib.symbol.lookup_symbol("empty_zero_page").type.target().sizeof)
+        )
 
         addr = pwndbg.aglib.symbol.lookup_symbol_addr("memstart_addr")
         assert addr is not None, "Symbol memstart_addr not exists"
 
         self.PHYS_OFFSET = pwndbg.aglib.memory.u(addr)
-        self.PAGE_OFFSET = (-1 << self.VA_BITS) + 2**64
+        self.PAGE_OFFSET = pwndbg.aglib.kernel.paging.physmap_base()
+        self.VA_BITS = int(math.log2(2**64 - self.PAGE_OFFSET))
 
         VA_BITS_MIN = 48 if self.VA_BITS > 48 else self.VA_BITS
         PAGE_END = (-1 << (VA_BITS_MIN - 1)) + 2**64

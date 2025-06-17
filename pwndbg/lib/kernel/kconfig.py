@@ -62,7 +62,6 @@ class Kconfig(UserDict):  # type: ignore[type-arg]
                     if page.start < (0xFFF << (4 * 13)):
                         self.data["CONFIG_X86_5LEVEL"] = "y"
 
-
     def get_key(self, name: str) -> str | None:
         # First attempt to lookup the value assuming the user passed in a name
         # like 'debug_info', then attempt to lookup the value assuming the user
