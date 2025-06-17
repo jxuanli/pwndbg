@@ -69,7 +69,7 @@ def test_command_slab_info():
         assert "may only be run when debugging a Linux kernel with debug" in res
         return
 
-    if not pwndbg.aglib,kernel.has_debug_info():
+    if not pwndbg.aglib.kernel.has_debug_info():
         pwndbg.aglib.kernel.symbol.load_slab_typeinfo()
     for cache in pwndbg.aglib.kernel.slab.caches():
         cache_name = cache.name

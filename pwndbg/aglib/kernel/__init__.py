@@ -149,14 +149,11 @@ def load_kconfig() -> pwndbg.lib.kernel.kconfig.Kconfig | None:
         mapping = get_first_kernel_ro()
         results = list(pwndbg.search.search(b"IKCFG_ST", mappings=[mapping]))
 
-        if len(results) == 0:
-            return None
-
-        config_start = results[0] + len("IKCFG_ST")
-        config_end = list(pwndbg.search.search(b"IKCFG_ED", start=config_start))[0]
-
+        if len(results) != 0:
+            config_start = results[0] + len("IKCFG_ST")
+            config_end = list(pwndbg.search.search(b"IKCFG_ED", start=config_start))[0]
     if config_start is None or config_end is None:
-        return None
+        return pwndbg.lib.kernel.kconfig.Kconfig(None)
 
     config_size = config_end - config_start
 
@@ -709,24 +706,30 @@ def paging_enabled() -> bool:
     else:
         raise NotImplementedError()
 
+def num_numa_nodes_helper():
+    node_states = pwndbg.aglib.symbol.lookup_symbol("node_states")
+    if node_states is None:
+        return 1
+    node_states = node_states.dereference()
 
-@requires_debug_info(1)
+    # 1 means aglib.typeinfo.enum_member("enum node_states", "N_ONLINE")
+    node_mask = node_states[1]["bits"][0]
+    return bin(int(node_mask)).count("1")
+
+
+@requires_debug_symbols(1)
 def num_numa_nodes() -> int:
     """Returns the number of NUMA nodes that are online on the system"""
     kc = kconfig()
     if kc is None:
+        return num_numa_nodes_helper()
         # if no config, we can still try one other way
-        node_states = pwndbg.aglib.symbol.lookup_symbol("node_states")
-        if node_states is None:
-            return 1
-        node_states = node_states.dereference()
-
-        # 1 means aglib.typeinfo.enum_member("enum node_states", "N_ONLINE")
-        node_mask = node_states[1]["bits"][0]
-        return bin(int(node_mask)).count("1")
 
     if "CONFIG_NUMA" not in kc:
         return 1
+
+    if "CONFIG_NODES_SHIFT" not in kc:
+        return num_numa_nodes_helper()
 
     max_nodes = 1 << int(kc["CONFIG_NODES_SHIFT"])
     if max_nodes == 1:
