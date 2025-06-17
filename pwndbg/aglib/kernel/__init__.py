@@ -435,14 +435,21 @@ class x86_64Ops(x86Ops):
         return (int(capabilities[feature // 32]) >> (feature % 32)) & 1 == 1
 
     @staticmethod
-    @requires_debug_info(False)  # TODO: REMOVE this default value
     def uses_5lvl_paging() -> bool:
-        # https://elixir.bootlin.com/linux/v6.2/source/arch/x86/include/asm/cpufeatures.h#L381
-        X86_FEATURE_LA57 = 16 * 32 + 16
-        # Separate to avoid using kconfig if possible
-        if not x86_64Ops.cpu_feature_capability(X86_FEATURE_LA57) or "no5lvl" in kcmdline():
-            return False
-        return x86_64Ops._kconfig_5lvl_paging()
+        if has_debug_info():
+            # https://elixir.bootlin.com/linux/v6.2/source/arch/x86/include/asm/cpufeatures.h#L381
+            X86_FEATURE_LA57 = 16 * 32 + 16
+            # Separate to avoid using kconfig if possible
+            if not x86_64Ops.cpu_feature_capability(X86_FEATURE_LA57) or "no5lvl" in kcmdline():
+                return False
+        # CONFIG_X86_5LEVEL is only a hint -- whether 5lvl paging is used depends on the hardware
+        # see also: https://www.kernel.org/doc/html/next/x86/x86_64/mm.html
+        pages = pwndbg.aglib.kernel.paging.get_memory_map_raw()
+        for page in pages:
+            if pwndbg.aglib.kernel.symbol.is_kernel(page.start):
+                if page.start < (0xFFF << (4 * 13)):
+                    return True
+        return False
 
     @staticmethod
     def _kconfig_5lvl_paging() -> bool:
@@ -706,7 +713,7 @@ def num_numa_nodes() -> int:
     if max_nodes == 1:
         return 1
 
-    val = pwndbg.aglib.symbol.lookup_symbol_value("nr_online_nodes")
+    val = pwndbg.aglib.kernel.symbol.try_symbol_u64("nr_online_nodes")
     assert val is not None, "Symbol nr_online_nodes not found"
 
     return val

@@ -161,15 +161,16 @@ enum pageflags {
 """
 
 
-@pwndbg.lib.cache.cache_until("forever")  # so it only runs once
 def load_common_structs():
     if pwndbg.aglib.kernel.has_debug_info():
+        return
+    if pwndbg.aglib.typeinfo.lookup_types("struct page") is not None:
         return
     header_file_path = pwndbg.commands.cymbol.create_temp_header_file(COMMON_TYPES)
     pwndbg.commands.cymbol.add_structure_from_header(header_file_path, "")
 
 
-@pwndbg.dbg.event_handler(EventType.NEW_MODULE)
+@pwndbg.dbg.event_handler(EventType.START)
 def load_common_structs_on_load():
     if pwndbg.aglib.qemu.is_qemu_kernel():
         load_common_structs()
@@ -326,11 +327,11 @@ def find_zone_offsets() -> Tuple[int, int, int, int, int]:
     return pcp_off, name_off, freelist_off, pcp_sz, zone_sz
 
 
-@pwndbg.lib.cache.cache_until("forever")  # so it only runs once
 @pwndbg.aglib.kernel.requires_debug_symbols()
 def load_buddydump_typeinfo():
     if pwndbg.aglib.typeinfo.lookup_types("struct pglist_data") is not None:
         return
+    load_common_structs()
 
     pglist_data = f"""
     typedef struct pglist_data {{
@@ -490,11 +491,11 @@ def kmem_cache_structs():
     return result
 
 
-@pwndbg.lib.cache.cache_until("forever")  # so it only runs once
 @pwndbg.aglib.kernel.requires_debug_symbols()
 def load_slab_typeinfo():
     if pwndbg.aglib.typeinfo.lookup_types("struct kmem_cache") is not None:
         return
+    load_common_structs()
     # this is the kmem_cache SLUB representation for all 5.x and 6.x
     kconfig = pwndbg.aglib.kernel.kconfig()
     defs = []

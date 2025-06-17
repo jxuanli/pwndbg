@@ -105,7 +105,8 @@ def pagewalk(target, entry=None) -> List[Tuple[int | None, int | None]]:
             break
         shift = (i - 1) * 9 + 12
         offset = target & ((1 << shift) - 1)
-        idx = (target & (0x1FF << shift)) >> shift
+        idx = 0x1FF & (target >> shift)
+        print(f"vaddr: {vaddr}, idx: {idx}")
         entry = 0
         try:
             table = pwndbg.aglib.memory.get_typed_pointer("unsigned long", vaddr)

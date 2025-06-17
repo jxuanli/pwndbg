@@ -55,12 +55,6 @@ class Kconfig(UserDict):  # type: ignore[type-arg]
             self.data["CONFIG_KASAN_GENERIC"] = "y"
         if self.CONFIG_SMP:
             self.data["CONFIG_SMP"] = "y"
-        if pwndbg.aglib.arch.name == "x86-64":
-            pages = pwndbg.aglib.kernel.paging.get_memory_map_raw()
-            for page in pages:
-                if pwndbg.aglib.kernel.symbol.is_kernel(page.start):
-                    if page.start < (0xFFF << (4 * 13)):
-                        self.data["CONFIG_X86_5LEVEL"] = "y"
 
     def get_key(self, name: str) -> str | None:
         # First attempt to lookup the value assuming the user passed in a name
