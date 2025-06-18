@@ -121,7 +121,9 @@ def get_first_kernel_ro() -> pwndbg.lib.memory.Page | None:
     return None
 
 
-def load_kconfig() -> pwndbg.lib.kernel.kconfig.Kconfig | None:
+@pwndbg.lib.cache.cache_until("start")
+def kconfig() -> pwndbg.lib.kernel.kconfig.Kconfig | None:
+    global _kconfig
     if has_debug_info():
         config_start = pwndbg.aglib.symbol.lookup_symbol_addr("kernel_config_data")
         config_end = pwndbg.aglib.symbol.lookup_symbol_addr("kernel_config_data_end")
@@ -133,21 +135,13 @@ def load_kconfig() -> pwndbg.lib.kernel.kconfig.Kconfig | None:
             config_start = results[0] + len("IKCFG_ST")
             config_end = list(pwndbg.search.search(b"IKCFG_ED", start=config_start))[0]
     if config_start is None or config_end is None:
-        return pwndbg.lib.kernel.kconfig.Kconfig(None)
+        _kconfig = pwndbg.lib.kernel.kconfig.Kconfig(None)
+        return _kconfig
 
     config_size = config_end - config_start
 
     compressed_config = pwndbg.aglib.memory.read(config_start, config_size)
-    return pwndbg.lib.kernel.kconfig.Kconfig(compressed_config)
-
-
-@pwndbg.lib.cache.cache_until("start")
-def kconfig() -> pwndbg.lib.kernel.kconfig.Kconfig | None:
-    global _kconfig
-    if _kconfig is None:
-        _kconfig = load_kconfig()
-    elif len(_kconfig) == 0:
-        return None
+    _kconfig = pwndbg.lib.kernel.kconfig.Kconfig(compressed_config)
     return _kconfig
 
 
@@ -671,30 +665,23 @@ def paging_enabled() -> bool:
         raise NotImplementedError()
 
 
-def num_numa_nodes_helper():
-    node_states = pwndbg.aglib.symbol.lookup_symbol("node_states")
-    if node_states is None:
-        return 1
-    node_states = node_states.dereference()
-
-    # 1 means aglib.typeinfo.enum_member("enum node_states", "N_ONLINE")
-    node_mask = node_states[1]["bits"][0]
-    return bin(int(node_mask)).count("1")
-
-
 @requires_debug_symbols(1)
 def num_numa_nodes() -> int:
     """Returns the number of NUMA nodes that are online on the system"""
     kc = kconfig()
-    if kc is None:
-        return num_numa_nodes_helper()
-        # if no config, we can still try one other way
 
     if "CONFIG_NUMA" not in kc:
         return 1
 
     if "CONFIG_NODES_SHIFT" not in kc:
-        return num_numa_nodes_helper()
+        node_states = pwndbg.aglib.symbol.lookup_symbol("node_states")
+        if node_states is None:
+            return 1
+        node_states = node_states.dereference()
+
+        # 1 means aglib.typeinfo.enum_member("enum node_states", "N_ONLINE")
+        node_mask = node_states[1]["bits"][0]
+        return bin(int(node_mask)).count("1")
 
     max_nodes = 1 << int(kc["CONFIG_NODES_SHIFT"])
     if max_nodes == 1:
