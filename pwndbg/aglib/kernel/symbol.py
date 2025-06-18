@@ -177,7 +177,7 @@ def load_common_structs_on_load():
 
 
 #########################################
-# structurs relavent to buddydump
+# structurs relevant to buddydump
 #
 #########################################
 zone_names = (
@@ -374,7 +374,7 @@ def load_buddydump_typeinfo():
 
 
 #########################################
-# structurs relavent to slab
+# structurs relevant to slab
 #
 #########################################
 
@@ -494,7 +494,6 @@ def load_slab_typeinfo():
     if pwndbg.aglib.typeinfo.lookup_types("struct kmem_cache") is not None:
         return
     load_common_structs()
-    # this is the kmem_cache SLUB representation for all 5.x and 6.x
     kconfig = pwndbg.aglib.kernel.kconfig()
     defs = []
     if pwndbg.aglib.kernel.krelease() < (6, 2):
@@ -517,6 +516,7 @@ def load_slab_typeinfo():
     result = "\n".join(f"#define {s}" for s in defs)
     result += COMMON_TYPES
     result += kmem_cache_structs()
+    # this is the kmem_cache SLUB representation for all 5.x and 6.x
     result += f"""
     struct kmem_cache {{
 #if !defined(CONFIG_SLUB_TINY) || defined(BEFORE_V6_2)
@@ -567,7 +567,7 @@ def load_slab_typeinfo():
         unsigned int useroffset;	/* Usercopy region offset */
         unsigned int usersize;		/* Usercopy region size */
 #endif
-        // make sure it has at least that many, sufficient for us
+        // ensure it has at least num_numa_nodes, sufficient for us
         struct kmem_cache_node *node[{pwndbg.aglib.kernel.num_numa_nodes()}];
     }};
     """
