@@ -909,9 +909,7 @@ def target_create(args: List[str], dbg: LLDB) -> None:
 
     # Create the target with the debugger.
     error = lldb.SBError()
-    target: lldb.SBTarget = dbg.debugger.CreateTarget(
-        args.filename, triple, args.platform, True, error
-    )
+    target: lldb.SBTarget = dbg.debugger.CreateTarget(args.filename, "", "host", True, error)
     if not error.success or not target.IsValid():
         print_error(f"could not create target for '{args.filename}': {error.description}")
         return

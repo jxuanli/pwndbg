@@ -5,8 +5,7 @@ from collections import UserDict
 from typing import Any
 from typing import Dict
 
-import gdb
-
+import pwndbg.aglib
 import pwndbg.aglib.kernel
 import pwndbg.aglib.symbol
 
@@ -89,72 +88,58 @@ class Kconfig(UserDict):  # type: ignore[type-arg]
     def CONFIG_SLUB_TINY(self) -> bool:
         if pwndbg.aglib.kernel.krelease() < (6, 2):
             return False
-        if pwndbg.aglib.symbol.lookup_symbol("flushwq") is None:
-            return True
-        return False
+        return pwndbg.aglib.symbol.lookup_symbol("flushwq") is None
 
     @property
     def CONFIG_SLUB_CPU_PARTIAL(self) -> bool:
         if pwndbg.aglib.kernel.krelease() < (6, 8):
             if pwndbg.aglib.symbol.lookup_symbol("unfreeze_partials") is not None:
                 return True
-            if pwndbg.aglib.symbol.lookup_symbol("__unfreeze_partials") is not None:
-                return True
-            return False
-        if pwndbg.aglib.symbol.lookup_symbol("__put_partials") is None:
-            return False
-        return True
+            return pwndbg.aglib.symbol.lookup_symbol("__unfreeze_partials") is not None
+        return pwndbg.aglib.symbol.lookup_symbol("__put_partials") is not None
 
     @property
     def CONFIG_MEMCG(self) -> bool:
-        if pwndbg.aglib.symbol.lookup_symbol("kpagecgroup_proc_ops") is None:
-            return False
-        return True
+        return pwndbg.aglib.symbol.lookup_symbol("kpagecgroup_proc_ops") is not None
 
     @property
     def CONFIG_SLAB_FREELIST_RANDOM(self) -> bool:
-        if pwndbg.aglib.symbol.lookup_symbol("init_cache_random_seq") is None:
-            return False
-        return True
+        return pwndbg.aglib.symbol.lookup_symbol("init_cache_random_seq") is not None
 
     @property
     def CONFIG_HARDENED_USERCOPY(self) -> bool:
-        if pwndbg.aglib.symbol.lookup_symbol("__check_heap_object") is None:
-            return False
-        return True
+        return pwndbg.aglib.symbol.lookup_symbol("__check_heap_object") is not None
 
     @property
     def CONFIG_SLAB_FREELIST_HARDENED(self) -> bool:
-        if pwndbg.aglib.symbol.lookup_symbol("kmem_cache_open") is not None:
-            if "get_random" in gdb.execute("disass kmem_cache_open", to_string=True):
-                return True
-        if pwndbg.aglib.symbol.lookup_symbol("do_kmem_cache_create") is not None:
-            if "get_random" in gdb.execute("disass do_kmem_cache_create", to_string=True):
-                return True
-        if pwndbg.aglib.symbol.lookup_symbol("__kmem_cache_create") is not None:
-            if "get_random" in gdb.execute("disass __kmem_cache_create", to_string=True):
-                return True
-        return False
+        def __helper(name):
+            addr = pwndbg.aglib.symbol.lookup_symbol_addr(name)
+            if addr is not None:
+                for instr in pwndbg.aglib.nearpc.nearpc(addr, 40):
+                    if "get_random" in instr:
+                        return True
+            return False
+
+        return any(
+            __helper(name)
+            for name in (
+                "kmem_cache_open",
+                "do_kmem_cache_create",
+                "__kmem_cache_create",
+            )
+        )
 
     @property
     def CONFIG_NUMA(self) -> bool:
-        if pwndbg.aglib.symbol.lookup_symbol("proc_pid_numa_maps_op") is None:
-            return False
-        return True
+        return pwndbg.aglib.symbol.lookup_symbol("proc_pid_numa_maps_op") is not None
 
     @property
     def CONFIG_KASAN_GENERIC(self) -> bool:
         # TODO: have a kernel build that tests this
         if pwndbg.aglib.kernel.krelease() < (5, 11):
-            if pwndbg.aglib.symbol.lookup_symbol("kasan_cache_create") is None:
-                return False
-            return True
-        if pwndbg.aglib.symbol.lookup_symbol("__kasan_cache_create") is None:
-            return False
-        return True
+            return pwndbg.aglib.symbol.lookup_symbol("kasan_cache_create") is not None
+        return pwndbg.aglib.symbol.lookup_symbol("__kasan_cache_create") is not None
 
     @property
     def CONFIG_SMP(self) -> bool:
-        if pwndbg.aglib.symbol.lookup_symbol("pcpu_get_vm_areas") is None:
-            return False
-        return True
+        return pwndbg.aglib.symbol.lookup_symbol("pcpu_get_vm_areas") is not None
