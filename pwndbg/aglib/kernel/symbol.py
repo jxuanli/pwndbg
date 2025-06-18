@@ -49,7 +49,7 @@ def nmtypes() -> int:
 def npcplist() -> int:
     """returns NR_PCP_LISTS (https://elixir.bootlin.com/linux/v6.13/source/include/linux/mmzone.h#L671)"""
     if not pwndbg.aglib.kernel.has_debug_info():
-        if pwndbg.aglib.kernel.is_earlier_than_version("5.14.0"):
+        if pwndbg.aglib.kernel.krelease() < (5, 14):
             return 3
         else:
             return 12
@@ -202,14 +202,14 @@ MAX_ORDER = 11
 def get_pcp_struct(pcp_sz) -> str:
     kconfig = pwndbg.aglib.kernel.kconfig()
     defs = []
-    if not pwndbg.aglib.kernel.is_earlier_than_version("5.14.0"):
-        if pwndbg.aglib.kernel.is_earlier_than_version("6.7.0"):
+    if not pwndbg.aglib.kernel.krelease() < (5, 14):
+        if pwndbg.aglib.kernel.krelease() < (6, 7):
             defs.append("BETWEEN_V5_14_AND_V6_6")
     else:
         defs.append("BEFORE_V5_14")
-    if not pwndbg.aglib.kernel.is_earlier_than_version("6.0.0"):
+    if not pwndbg.aglib.kernel.krelease() < (6, 0):
         defs.append("SINCE_V6_0")
-    if not pwndbg.aglib.kernel.is_earlier_than_version("6.7.0"):
+    if not pwndbg.aglib.kernel.krelease() < (6, 7):
         defs.append("SINCE_V6_7")
     for config in (
         "CONFIG_NUMA",
@@ -273,7 +273,7 @@ def find_zone_offsets() -> Tuple[int, int, int, int, int]:
             pcp_off = (i + 1) * 8
             break
     assert pcp_off, "can't find pcp offset"
-    if pwndbg.aglib.kernel.is_earlier_than_version("5.14.0"):
+    if pwndbg.aglib.kernel.krelease() < (5, 14):
         pcp_ptr = pwndbg.aglib.kernel.per_cpu(
             pwndbg.aglib.memory.get_typed_pointer("struct page", pwndbg.aglib.memory.u64(ptr))
         )
@@ -345,7 +345,7 @@ def load_buddydump_typeinfo():
     pcp_off, name_off, freearea_off, pcp_sz, zone_sz = find_zone_offsets()
     per_cpu_pages = get_pcp_struct(pcp_sz)
     zone = ""
-    if pwndbg.aglib.kernel.is_earlier_than_version("5.14.0"):
+    if pwndbg.aglib.kernel.krelease() < (5, 14):
         zone = "#define BEFORE_V5_14\n"
     zone += f"""
     struct zone {{
@@ -414,18 +414,16 @@ def kmem_cache_pad_sz(kconfig) -> int:
     for config in configs:
         if config in kconfig:
             distance -= 8
-    if "CONFIG_HARDENED_USERCOPY" in kconfig or pwndbg.aglib.kernel.is_earlier_than_version(
-        "6.2.0"
-    ):
+    if "CONFIG_HARDENED_USERCOPY" in kconfig or pwndbg.aglib.kernel.krelease() < (6, 2):
         distance -= 8
     return distance
 
 
 def kmem_cache_structs():
     to_define = None
-    if pwndbg.aglib.kernel.is_earlier_than_version("5.17.0"):
+    if pwndbg.aglib.kernel.krelease() < (5, 17):
         to_define = "BEFORE_V5_17"
-    elif pwndbg.aglib.kernel.is_earlier_than_version("6.8.0"):
+    elif pwndbg.aglib.kernel.krelease() < (6, 8):
         to_define = "BETWEEN_V5_17_AND_V6_7"
     else:
         to_define = "SINCE_V6_8"
@@ -499,9 +497,9 @@ def load_slab_typeinfo():
     # this is the kmem_cache SLUB representation for all 5.x and 6.x
     kconfig = pwndbg.aglib.kernel.kconfig()
     defs = []
-    if pwndbg.aglib.kernel.is_earlier_than_version("6.2.0"):
+    if pwndbg.aglib.kernel.krelease() < (6, 2):
         defs.append("BEFORE_V6_2")
-    if pwndbg.aglib.kernel.is_earlier_than_version("5.19.0"):
+    if pwndbg.aglib.kernel.krelease() < (5, 19):
         defs.append("BEFORE_V5_19")
     configs = (
         "CONFIG_SLUB_TINY",

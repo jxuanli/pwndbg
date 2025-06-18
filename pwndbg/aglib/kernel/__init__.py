@@ -173,19 +173,6 @@ def kversion() -> str:
     return pwndbg.aglib.memory.string(version_addr).decode("ascii").strip()
 
 
-def is_earlier_than_version(their_version: str) -> bool:
-    our_version = kversion().split(" ")[2]
-    our_parts = tuple(map(int, our_version.split("-")[0].split(".")))
-    their_parts = tuple(map(int, their_version.split(".")))
-    assert len(our_parts) == len(their_parts)
-    for i in range(len(our_parts)):
-        if our_parts[i] > their_parts[i]:
-            return False
-        elif our_parts[i] < their_parts[i]:
-            return True
-    return False  # they are the same version
-
-
 @pwndbg.lib.cache.cache_until("start")
 def krelease() -> Tuple[int, ...]:
     match = re.search(r"Linux version (\d+)\.(\d+)(?:\.(\d+))?", kversion())

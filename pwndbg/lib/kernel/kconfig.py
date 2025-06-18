@@ -87,7 +87,7 @@ class Kconfig(UserDict):  # type: ignore[type-arg]
 
     @property
     def CONFIG_SLUB_TINY(self) -> bool:
-        if pwndbg.aglib.kernel.is_earlier_than_version("6.2.0"):
+        if pwndbg.aglib.kernel.krelease() < (6, 2):
             return False
         if pwndbg.aglib.symbol.lookup_symbol("flushwq") is None:
             return True
@@ -95,7 +95,7 @@ class Kconfig(UserDict):  # type: ignore[type-arg]
 
     @property
     def CONFIG_SLUB_CPU_PARTIAL(self) -> bool:
-        if pwndbg.aglib.kernel.is_earlier_than_version("6.8.0"):
+        if pwndbg.aglib.kernel.krelease() < (6, 8):
             if pwndbg.aglib.symbol.lookup_symbol("unfreeze_partials") is not None:
                 return True
             if pwndbg.aglib.symbol.lookup_symbol("__unfreeze_partials") is not None:
@@ -145,7 +145,7 @@ class Kconfig(UserDict):  # type: ignore[type-arg]
     @property
     def CONFIG_KASAN_GENERIC(self) -> bool:
         # TODO: have a kernel build that tests this
-        if pwndbg.aglib.kernel.is_earlier_than_version("5.11.0"):
+        if pwndbg.aglib.kernel.krelease() < (5, 11):
             if pwndbg.aglib.symbol.lookup_symbol("kasan_cache_create") is None:
                 return False
             return True
