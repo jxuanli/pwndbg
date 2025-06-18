@@ -124,6 +124,7 @@ def get_first_kernel_ro() -> pwndbg.lib.memory.Page | None:
 @pwndbg.lib.cache.cache_until("start")
 def kconfig() -> pwndbg.lib.kernel.kconfig.Kconfig | None:
     global _kconfig
+    config_start, config_end = None, None
     if has_debug_info():
         config_start = pwndbg.aglib.symbol.lookup_symbol_addr("kernel_config_data")
         config_end = pwndbg.aglib.symbol.lookup_symbol_addr("kernel_config_data_end")
@@ -675,7 +676,7 @@ def num_numa_nodes() -> int:
 
     if "CONFIG_NODES_SHIFT" not in kc:
         node_states = pwndbg.aglib.symbol.lookup_symbol("node_states")
-        if node_states is None:
+        if node_states is None or not has_debug_info():
             return 1
         node_states = node_states.dereference()
 

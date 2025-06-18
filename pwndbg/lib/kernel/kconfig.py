@@ -44,7 +44,7 @@ class Kconfig(UserDict):  # type: ignore[type-arg]
         if self.CONFIG_MEMCG:
             self.data["CONFIG_MEMCG"] = "y"
         if self.CONFIG_SLAB_FREELIST_RANDOM:
-            self.data["CONFIG_SLUB_CPU_PARTIAL"] = "y"
+            self.data["CONFIG_SLAB_FREELIST_RANDOM"] = "y"
         if self.CONFIG_HARDENED_USERCOPY:
             self.data["CONFIG_HARDENED_USERCOPY"] = "y"
         if self.CONFIG_SLAB_FREELIST_HARDENED:
