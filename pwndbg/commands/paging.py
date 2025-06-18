@@ -115,14 +115,3 @@ page2v_parser = argparse.ArgumentParser(
     description="Converting a pointer to a `struct page` to the actual address of the page"
 )
 page2v_parser.add_argument("page", type=str, help="")
-
-
-@pwndbg.commands.Command(page2v_parser, category=CommandCategory.KERNEL)
-@pwndbg.commands.OnlyWhenQemuKernel
-@pwndbg.commands.OnlyWithKernelDebugSymbols
-@pwndbg.commands.OnlyWhenPagingEnabled
-@pwndbg.aglib.proc.OnlyWithArch(["x86-64"])
-def page2v(page):
-    page = pwndbg.dbg.selected_frame().evaluate_expression(page)
-    page = pwndbg.aglib.kernel.page_to_virt(int(page))
-    paging_print_helper("Page", page)

@@ -550,7 +550,7 @@ def load_slab_typeinfo():
         const char *name;		/* Name (only for display!) */
         struct list_head list;		/* List of slab caches */
 
-        char _pad1[{sz}]; // collapse the struct(s) that are version dependant and complex
+        char _pad1[{sz}]; // collapse the struct(s) that are version dependent and complex
 #ifdef CONFIG_SLAB_FREELIST_HARDENED
         unsigned long random;
 #endif
