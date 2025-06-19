@@ -36,7 +36,7 @@ def find_kbase(pages) -> int | None:
 
         # only search in kernel mappings:
         # https://www.kernel.org/doc/html/v5.3/arm64/memory.html
-        if mapping.vaddr & (0xFFFF << 48) == 0:
+        if mapping.vaddr & pwndbg.aglib.kernel.symbol.is_kernel(mapping.vaddr):
             continue
 
         if not mapping.execute:

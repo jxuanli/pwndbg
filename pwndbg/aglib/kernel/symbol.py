@@ -170,7 +170,7 @@ def load_common_structs():
     pwndbg.commands.cymbol.add_structure_from_header(header_file_path, "")
 
 
-@pwndbg.dbg.event_handler(EventType.START)
+@pwndbg.dbg.event_handler(EventType.NEW_MODULE)
 def load_common_structs_on_load():
     if pwndbg.aglib.qemu.is_qemu_kernel():
         load_common_structs()

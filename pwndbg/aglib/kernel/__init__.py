@@ -41,7 +41,7 @@ def BIT(shift: int):
 
 @pwndbg.lib.cache.cache_until("objfile")
 def has_debug_symbols() -> bool:
-    # Check for an arbitrary type and symbol name that are not likely to change
+    # Check for an arbitrary function and symbol name that are not likely to change
     return (
         pwndbg.aglib.symbol.lookup_symbol_addr("commit_creds") is not None
         and pwndbg.aglib.symbol.lookup_symbol_addr("linux_banner") is not None
@@ -95,10 +95,10 @@ def requires_debug_info(default: D = None) -> Callable[[Callable[P, T]], Callabl
     return decorator
 
 
-@requires_debug_info(default=1)
+@requires_debug_symbols(default=1)
 def nproc() -> int:
     """Returns the number of processing units available, similar to nproc(1)"""
-    val = pwndbg.aglib.symbol.lookup_symbol_value("nr_cpu_ids")
+    val = pwndbg.aglib.kernel.symbol.try_symbol_u64("nr_cpu_ids")
     assert val is not None, "Symbol nr_cpu_ids not exists"
     return val
 
@@ -146,7 +146,7 @@ def kconfig() -> pwndbg.lib.kernel.kconfig.Kconfig | None:
     return _kconfig
 
 
-@requires_debug_info(default="")
+@requires_debug_symbols(default="")
 @pwndbg.lib.cache.cache_until("start")
 def kcmdline() -> str:
     addr = pwndbg.aglib.symbol.lookup_symbol_addr("saved_command_line")
