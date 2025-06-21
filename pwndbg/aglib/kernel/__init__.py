@@ -407,7 +407,7 @@ class x86_64Ops(x86Ops):
         # see also: https://www.kernel.org/doc/html/next/x86/x86_64/mm.html
         pages = pwndbg.aglib.kernel.paging.get_memory_map_raw()
         for page in pages:
-            if pwndbg.aglib.kernel.symbol.is_kernel(page.start):
+            if pwndbg.aglib.memory.is_kernel(page.start):
                 if page.start < (0xFFF << (4 * 13)):
                     return True
         return False

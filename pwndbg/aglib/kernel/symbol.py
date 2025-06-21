@@ -65,10 +65,6 @@ def npcplist() -> int:
     return 0
 
 
-def is_kernel(addr):
-    return addr >> 63 == 1
-
-
 #########################################
 # common structurs
 #
@@ -268,7 +264,7 @@ def find_zone_offsets() -> Tuple[int, int, int, int, int]:
     for i in range(start_idx, 20):  # the pcp offset should exist in those range
         val = pwndbg.aglib.memory.u64(ptr)
         ptr += 8
-        if is_kernel(val):
+        if pwndbg.aglib.memory.is_kernel(val):
             # we have found `zone_pgdat`
             pcp_off = (i + 1) * 8
             break
@@ -305,7 +301,7 @@ def find_zone_offsets() -> Tuple[int, int, int, int, int]:
         cur = pwndbg.aglib.memory.u64(ptr)
         ptr += 8
         # prev is the write cache padding followed by the freelist
-        if prev == 0 and is_kernel(cur):
+        if prev == 0 and pwndbg.aglib.memory.is_kernel(cur):
             freelist_off = (i + 1) * 8 + name_off
             break
         prev = cur
@@ -317,7 +313,7 @@ def find_zone_offsets() -> Tuple[int, int, int, int, int]:
     for i in range(100):  # the pcp offset should exist in those range
         val = pwndbg.aglib.memory.u64(ptr)
         ptr += 8
-        if is_kernel(val):
+        if pwndbg.aglib.memory.is_kernel(val):
             # we have found `zone_pgdat`
             zone_sz = ptr - pcp_off - try_symbol_u64("node_data")
             break
@@ -400,7 +396,11 @@ def kmem_cache_pad_sz(kconfig) -> int:
             nr_partial = pwndbg.aglib.memory.u64(val + 0x8)
             next = pwndbg.aglib.memory.u64(val + 0x10)
             prev = pwndbg.aglib.memory.u64(val + 0x18)
-            if nr_partial < 0x20 and is_kernel(next) and is_kernel(prev):
+            if (
+                nr_partial < 0x20
+                and pwndbg.aglib.memory.is_kernel(next)
+                and pwndbg.aglib.memory.is_kernel(prev)
+            ):
                 distance = i * 8
                 break
     assert distance, "can't find kmem_cache node"

@@ -114,11 +114,7 @@ class AddressMarkers:
 
 class x86_64Markers(AddressMarkers):
     def __init__(self):
-        result = pwndbg.aglib.symbol.lookup_symbol_addr("page_offset_base")
-        self.physmap = None
-        if result is not None:
-            if pwndbg.aglib.memory.peek(result):
-                self.physmap = pwndbg.aglib.memory.u64(result)
+        self.physmap = pwndbg.aglib.kernel.symbol.try_symbol_u64("page_offset_base")
         if self.physmap is None:
             self.physmap = guess_physmap()
         # if self.uses_5lvl_paging():
@@ -131,14 +127,8 @@ class x86_64Markers(AddressMarkers):
         #     self.PAGE_OFFSET = 0xFFFF888000000000
         #     # https://elixir.bootlin.com/linux/v6.2/source/arch/x86/include/asm/pgtable_64_types.h#L130
         #     self.VMEMMAP_START = 0xFFFFEA0000000000
-        self.vmalloc = None
-        addr = pwndbg.aglib.symbol.lookup_symbol_addr("vmalloc_base")
-        if addr:
-            self.vmalloc = pwndbg.aglib.memory.u64(addr)
-        self.vmemmap = None
-        addr = pwndbg.aglib.symbol.lookup_symbol_addr("vmemmap_base")
-        if addr:
-            self.vmemmap = pwndbg.aglib.memory.u64(addr)
+        self.vmalloc = pwndbg.aglib.kernel.symbol.try_symbol_u64("vmalloc_base")
+        self.vmemmap = pwndbg.aglib.kernel.symbol.try_symbol_u64("vmemmap_base")
         self.kbase = self.kbase_helper(pwndbg.aglib.kernel.get_idt_entries()[0].offset)
         self.addr_marker_sz = 0x18
 
