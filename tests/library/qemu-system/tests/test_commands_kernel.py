@@ -188,10 +188,6 @@ def test_command_kernel_vmmap():
 @pytest.mark.skipif(
     not pwndbg.aglib.kernel.has_debug_symbols(), reason="test requires debug symbols"
 )
-@pytest.mark.skipif(
-    pwndbg.aglib.arch.name not in ["i386", "x86-64"],
-    reason="function page_offset is only implemented for x86",
-)
 def test_command_buddydump():
     res = gdb.execute("buddydump", to_string=True)
     NOFREEPAGE = "No free pages with specified filters found.\n"
