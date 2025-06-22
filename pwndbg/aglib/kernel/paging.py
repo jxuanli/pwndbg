@@ -60,7 +60,8 @@ class AddressMarkers:
     def page_shift(self) -> int:
         raise NotImplementedError()
 
-    def markers_fallback(self) -> Tuple[Tuple[str, int], ...]:
+    @property
+    def paging_level(self) -> int:
         raise NotImplementedError()
 
     def adjust(self, name: str) -> str:
@@ -70,25 +71,7 @@ class AddressMarkers:
         raise NotImplementedError()
 
     def markers(self) -> Tuple[Tuple[str, int], ...]:
-        address_markers = pwndbg.aglib.symbol.lookup_symbol_addr("address_markers")
-        if address_markers is not None:
-            sections = [(self.USERLAND, 0)]
-            value = 0
-            name = None
-            for i in range(20):
-                value = pwndbg.aglib.memory.u64(address_markers + i * self.addr_marker_sz)
-                name_ptr = pwndbg.aglib.memory.u64(address_markers + i * self.addr_marker_sz + 8)
-                name = None
-                if name_ptr > 0:
-                    name = pwndbg.aglib.memory.string(name_ptr).decode()
-                    name = self.adjust(name)
-                value = self.adjust_marker_value(name, value)
-                if value > 0:
-                    sections.append((name, value))
-                if value == 0xFFFFFFFFFFFFFFFF:
-                    break
-            return tuple(sections)
-        return self.markers_fallback()
+        raise NotImplementedError()
 
     def handle_kernel_pages(self, pages, kernel_idx):
         # this is arch dependent
@@ -136,8 +119,33 @@ class x86_64Markers(AddressMarkers):
     def page_shift(self) -> int:
         return 12
 
+    @property
+    def paging_level(self) -> int:
+        if pwndbg.aglib.kernel.has_debug_syms():
+            # https://elixir.bootlin.com/linux/v6.2/source/arch/x86/include/asm/cpufeatures.h#L381
+            X86_FEATURE_LA57 = 16 * 32 + 16
+            feature = X86_FEATURE_LA57
+            # Separate to avoid using kconfig if possible
+            boot_cpu_data = pwndbg.aglib.symbol.lookup_symbol("boot_cpu_data")
+            assert boot_cpu_data is not None, "Symbol boot_cpu_data not exists"
+            boot_cpu_data = boot_cpu_data.dereference()
+
+            capabilities = boot_cpu_data["x86_capability"]
+            cpu_feature_capability = (int(capabilities[feature // 32]) >> (feature % 32)) & 1 == 1
+            if not cpu_feature_capability or "no5lvl" in pwndbg.aglib.kernel.kcmdline():
+                return 4
+            return 5
+        # CONFIG_X86_5LEVEL is only a hint -- whether 5lvl paging is used depends on the hardware
+        # see also: https://www.kernel.org/doc/html/next/x86/x86_64/mm.html
+        pages = get_memory_map_raw()
+        for page in pages:
+            if pwndbg.aglib.memory.is_kernel(page.start):
+                if page.start < (0xFFF << (4 * 13)):
+                    return 5
+        return 4
+
     @pwndbg.lib.cache.cache_until("stop")
-    def markers_fallback(self) -> Tuple[Tuple[str, int], ...]:
+    def markers(self) -> Tuple[Tuple[str, int], ...]:
         return (
             (self.USERLAND, 0),
             (None, 0x8000000000000000),
@@ -282,7 +290,25 @@ class Aarch64Markers(AddressMarkers):
             return 16
 
     @pwndbg.lib.cache.cache_until("stop")
-    def markers_fallback(self) -> Tuple[Tuple[str, int], ...]:
+    def markers(self) -> Tuple[Tuple[str, int], ...]:
+        address_markers = pwndbg.aglib.symbol.lookup_symbol_addr("address_markers")
+        if address_markers is not None:
+            sections = [(self.USERLAND, 0)]
+            value = 0
+            name = None
+            for i in range(20):
+                value = pwndbg.aglib.memory.u64(address_markers + i * self.addr_marker_sz)
+                name_ptr = pwndbg.aglib.memory.u64(address_markers + i * self.addr_marker_sz + 8)
+                name = None
+                if name_ptr > 0:
+                    name = pwndbg.aglib.memory.string(name_ptr).decode()
+                    name = self.adjust(name)
+                value = self.adjust_marker_value(name, value)
+                if value > 0:
+                    sections.append((name, value))
+                if value == 0xFFFFFFFFFFFFFFFF:
+                    break
+            return tuple(sections)
         return (
             (self.USERLAND, 0),
             (None, 0x8000000000000000),
@@ -335,10 +361,7 @@ class Aarch64Markers(AddressMarkers):
 
 @pwndbg.aglib.proc.OnlyWithArch(["x86-64"])
 def pagewalk(target, entry=None) -> List[Tuple[int | None, int | None]]:
-    level = 4
-    ops: pwndbg.aglib.kernel.x86_64Ops = pwndbg.aglib.kernel.arch_ops()
-    if ops.uses_5lvl_paging():
-        level = 5
+    level = pwndbg.aglib.kernel.arch_markers().paging_level
     base = pwndbg.aglib.kernel.arch_markers().physmap
     if entry is None:
         entry = pwndbg.aglib.regs["cr3"]
