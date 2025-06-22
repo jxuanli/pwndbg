@@ -95,7 +95,7 @@ class AddressMarkers:
 class x86_64Markers(AddressMarkers):
     def __init__(self):
         self.kbase = self.kbase_helper(pwndbg.aglib.kernel.get_idt_entries()[0].offset)
-        self.physmap = pwndbg.aglib.kernel.symbol.try_symbol_u64("page_offset_base")
+        self.physmap = pwndbg.aglib.kernel.symbol.try_usymbol("page_offset_base")
         if self.physmap is None:
             self.physmap = guess_physmap()
         # if self.uses_5lvl_paging():
@@ -117,12 +117,12 @@ class x86_64Markers(AddressMarkers):
     @property
     @pwndbg.lib.cache.cache_until("stop")
     def vmalloc(self):
-        return pwndbg.aglib.kernel.symbol.try_symbol_u64("vmalloc_base")
+        return pwndbg.aglib.kernel.symbol.try_usymbol("vmalloc_base")
 
     @property
     @pwndbg.lib.cache.cache_until("stop")
     def vmemmap(self):
-        return pwndbg.aglib.kernel.symbol.try_symbol_u64("vmemmap_base")
+        return pwndbg.aglib.kernel.symbol.try_usymbol("vmemmap_base")
 
     @property
     def paging_level(self) -> int:

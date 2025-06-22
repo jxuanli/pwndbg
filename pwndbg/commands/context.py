@@ -997,6 +997,7 @@ class RegisterContext:
         val = self.get_register_value(reg)
         if val is None:
             return None
+        desc = ""
         desc = pwndbg.chain.format(val)
         prefix = self.get_prefix(reg)
         return f"{prefix} {desc}"

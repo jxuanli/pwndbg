@@ -14,13 +14,20 @@ from pwndbg.dbg import EventType
 #########################################
 
 
-@pwndbg.aglib.kernel.requires_debug_symbols(None)
-def try_symbol_u64(name: str) -> int:
+def try_usymbol(name: str, size=pwndbg.aglib.kernel.arch_markers().ptr_size) -> int:
+    if not pwndbg.aglib.kernel.has_debug_symbols():
+        return None
     if pwndbg.aglib.kernel.has_debug_info():
         return pwndbg.aglib.symbol.lookup_symbol_value(name)
     symbol = pwndbg.aglib.symbol.lookup_symbol_addr(name)
     if symbol is None:
         return None
+    if size == 8:
+        return pwndbg.aglib.memory.u(symbol)
+    if size == 16:
+        return pwndbg.aglib.memory.u16(symbol)
+    if size == 32:
+        return pwndbg.aglib.memory.u32(symbol)
     return pwndbg.aglib.memory.u64(symbol)
 
 
@@ -260,7 +267,7 @@ def get_pcp_struct(pcp_sz) -> str:
 def find_zone_offsets() -> Tuple[int, int, int, int, int]:
     pcp_off, name_off, freelist_off, pcp_sz, zone_sz = None, None, None, None, None
     start_idx = 10
-    ptr = try_symbol_u64("node_data") + start_idx * 8
+    ptr = try_usymbol("node_data") + start_idx * 8
     for i in range(start_idx, 20):  # the pcp offset should exist in those range
         val = pwndbg.aglib.memory.u64(ptr)
         ptr += 8
@@ -315,7 +322,7 @@ def find_zone_offsets() -> Tuple[int, int, int, int, int]:
         ptr += 8
         if pwndbg.aglib.memory.is_kernel(val):
             # we have found `zone_pgdat`
-            zone_sz = ptr - pcp_off - try_symbol_u64("node_data")
+            zone_sz = ptr - pcp_off - try_usymbol("node_data")
             break
     assert (
         zone_sz and zone_sz < 0x4000 and zone_sz & 0xF == 0
@@ -381,7 +388,7 @@ def kmem_cache_pad_sz(kconfig) -> int:
     # and the global var is also named "kmem_cache"
     name = "kmem_cache"
     name_off = None
-    kmem_cache = try_symbol_u64(name)
+    kmem_cache = try_usymbol(name)
     assert kmem_cache, "can't find kmem_cache"
     for i in range(0x20):
         val = pwndbg.aglib.memory.u64(kmem_cache + i * 8)

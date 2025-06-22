@@ -407,7 +407,7 @@ class Slab:
 def find_containing_slab_cache(addr: int) -> SlabCache | None:
     """Find the slab cache associated with the provided address."""
     min_pfn = 0
-    max_pfn = pwndbg.aglib.kernel.symbol.try_symbol_u64("max_pfn")
+    max_pfn = pwndbg.aglib.kernel.symbol.try_usymbol("max_pfn")
     assert max_pfn is not None, "Symbol max_pfn not found"
 
     page_size = kernel.page_size()

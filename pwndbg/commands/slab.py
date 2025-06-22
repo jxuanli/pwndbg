@@ -246,6 +246,7 @@ def slab_info(name: str, verbose: bool, cpu: int, node: int, active: bool, parti
             indent.print(f"{indent.prefix('Usercopy region size')}: {usersize}")
 
         for cpu_cache in slab_cache.cpu_caches:
+            print(f"{hex(int(cpu_cache._cpu_cache))}")
             if cpu_cache.cpu is not None and cpu_cache.cpu != cpu:
                 continue
             print_cpu_cache(cpu_cache, verbose, active, partial, indent)
