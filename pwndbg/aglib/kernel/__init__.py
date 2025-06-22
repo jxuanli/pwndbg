@@ -605,7 +605,7 @@ def num_numa_nodes() -> int:
     if max_nodes == 1:
         return 1
 
-    val = pwndbg.aglib.kernel.symbol.try_usymbol("nr_online_nodes")
+    val = pwndbg.aglib.kernel.symbol.try_usymbol("nr_online_nodes", 32)
     assert val is not None, "Symbol nr_online_nodes not found"
 
     return val

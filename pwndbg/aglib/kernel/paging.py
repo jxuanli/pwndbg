@@ -126,7 +126,7 @@ class x86_64Markers(AddressMarkers):
 
     @property
     def paging_level(self) -> int:
-        if pwndbg.aglib.kernel.has_debug_symbols():
+        if pwndbg.aglib.kernel.has_debug_info():
             # https://elixir.bootlin.com/linux/v6.2/source/arch/x86/include/asm/cpufeatures.h#L381
             X86_FEATURE_LA57 = 16 * 32 + 16
             feature = X86_FEATURE_LA57
@@ -368,7 +368,6 @@ def pagewalk(target, entry=None) -> List[Tuple[int | None, int | None]]:
         shift = (i - 1) * 9 + 12
         offset = target & ((1 << shift) - 1)
         idx = 0x1FF & (target >> shift)
-        print(f"vaddr: {vaddr}, idx: {idx}")
         entry = 0
         try:
             table = pwndbg.aglib.memory.get_typed_pointer("unsigned long", vaddr)

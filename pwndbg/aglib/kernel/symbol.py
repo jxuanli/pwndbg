@@ -14,7 +14,7 @@ from pwndbg.dbg import EventType
 #########################################
 
 
-def try_usymbol(name: str, size=pwndbg.aglib.kernel.arch_markers().ptr_size) -> int:
+def try_usymbol(name: str, size=pwndbg.aglib.kernel.ptr_size) -> int:
     if not pwndbg.aglib.kernel.has_debug_symbols():
         return None
     if pwndbg.aglib.kernel.has_debug_info():
@@ -423,6 +423,7 @@ def kmem_cache_pad_sz(kconfig) -> int:
             distance -= 8
     if "CONFIG_HARDENED_USERCOPY" in kconfig or pwndbg.aglib.kernel.krelease() < (6, 2):
         distance -= 8
+    assert distance < 0x1000, "cannot find kmem_cache padding size"
     return distance
 
 
