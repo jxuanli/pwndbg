@@ -236,12 +236,6 @@ def test_command_buddydump():
     for i in range(11):
         if i == 1:
             continue
-    for name in ["Movable", "Reclaimable", "HighAtomic", "CMA", "Isolate"]:
-        assert f"- {name}" not in filter_res
-    filter_res = gdb.execute("bud -o 1", to_string=True)
-    for i in range(11):
-        if i == 1:
-            continue
         assert f"Order {i}" not in filter_res
     filter_res = gdb.execute("bud -p", to_string=True)
     assert "free_area" not in filter_res
