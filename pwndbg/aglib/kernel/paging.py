@@ -26,7 +26,7 @@ def guess_physmap():
             return page.start
 
 
-class AddressMarkers:
+class ArchPagingInfo:
     USERLAND = "userland"
     KERNELLAND = "kernel [.text]"
     KERNELRO = "kernel [.rodata]"
@@ -93,23 +93,12 @@ class AddressMarkers:
         return None
 
 
-class x86_64Markers(AddressMarkers):
+class x86_64PagingInfo(ArchPagingInfo):
     def __init__(self):
         self.kbase = self.kbase_helper(pwndbg.aglib.kernel.get_idt_entries()[0].offset)
         self.physmap = pwndbg.aglib.kernel.symbol.try_usymbol("page_offset_base")
         if self.physmap is None:
             self.physmap = guess_physmap()
-        # if self.uses_5lvl_paging():
-        #     # https://elixir.bootlin.com/linux/v6.2/source/arch/x86/include/asm/page_64_types.h#L41
-        #     self.PAGE_OFFSET = 0xFF11000000000000
-        #     # https://elixir.bootlin.com/linux/v6.2/source/arch/x86/include/asm/pgtable_64_types.h#L131
-        #     self.VMEMMAP_START = 0xFFD4000000000000
-        # else:
-        #     # https://elixir.bootlin.com/linux/v6.2/source/arch/x86/include/asm/page_64_types.h#L42
-        #     self.PAGE_OFFSET = 0xFFFF888000000000
-        #     # https://elixir.bootlin.com/linux/v6.2/source/arch/x86/include/asm/pgtable_64_types.h#L130
-        #     self.VMEMMAP_START = 0xFFFFEA0000000000
-        self.addr_marker_sz = 0x18
 
     @property
     def page_shift(self) -> int:
@@ -123,7 +112,13 @@ class x86_64Markers(AddressMarkers):
     @property
     @pwndbg.lib.cache.cache_until("stop")
     def vmemmap(self):
-        return pwndbg.aglib.kernel.symbol.try_usymbol("vmemmap_base")
+        result = pwndbg.aglib.kernel.symbol.try_usymbol("vmemmap_base")
+        if result is not None:
+            return result
+        # resort to default
+        if self.paging_level == 5:
+            return 0xFFD4000000000000
+        return 0xFFFFEA0000000000
 
     @property
     def paging_level(self) -> int:
@@ -208,7 +203,7 @@ class x86_64Markers(AddressMarkers):
                 page.objfile = "kernel [stack]"
 
 
-class Aarch64Markers(AddressMarkers):
+class Aarch64PagingInfo(ArchPagingInfo):
     def __init__(self):
         self.tcr_el1 = pwndbg.lib.regs.aarch64_tcr_flags
         self.tcr_el1.value = pwndbg.aglib.regs.TCR_EL1
@@ -228,7 +223,6 @@ class Aarch64Markers(AddressMarkers):
         # https://elixir.bootlin.com/linux/v6.13.12/source/arch/arm64/include/asm/memory.h#L47
         self.vmalloc = self.module_end
         self.kbase = self.kbase_helper(pwndbg.aglib.regs.vbar)
-        self.addr_marker_sz = 0x10
 
     def _page_offset(self, va):
         return (-1 << va) + 2**64
@@ -303,8 +297,8 @@ class Aarch64Markers(AddressMarkers):
             value = 0
             name = None
             for i in range(20):
-                value = pwndbg.aglib.memory.u64(address_markers + i * self.addr_marker_sz)
-                name_ptr = pwndbg.aglib.memory.u64(address_markers + i * self.addr_marker_sz + 8)
+                value = pwndbg.aglib.memory.u64(address_markers + i * 0x10)
+                name_ptr = pwndbg.aglib.memory.u64(address_markers + i * 0x10 + 8)
                 name = None
                 if name_ptr > 0:
                     name = pwndbg.aglib.memory.string(name_ptr).decode()
@@ -363,8 +357,8 @@ class Aarch64Markers(AddressMarkers):
 
 @pwndbg.aglib.proc.OnlyWithArch(["x86-64"])
 def pagewalk(target, entry=None) -> List[Tuple[int | None, int | None]]:
-    level = pwndbg.aglib.kernel.arch_markers().paging_level
-    base = pwndbg.aglib.kernel.arch_markers().physmap
+    level = pwndbg.aglib.kernel.arch_paginginfo().paging_level
+    base = pwndbg.aglib.kernel.arch_paginginfo().physmap
     if entry is None:
         entry = pwndbg.aglib.regs["cr3"]
     else:
