@@ -107,9 +107,3 @@ def v2p(vaddr):
     vaddr = pwndbg.dbg.selected_frame().evaluate_expression(vaddr)
     paddr = pwndbg.aglib.kernel.virt_to_phys(int(vaddr))
     paging_print_helper("Physical address", paddr)
-
-
-page2v_parser = argparse.ArgumentParser(
-    description="Converting a pointer to a `struct page` to the actual address of the page"
-)
-page2v_parser.add_argument("page", type=str, help="")
