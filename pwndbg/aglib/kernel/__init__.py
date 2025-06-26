@@ -160,13 +160,16 @@ def kcmdline() -> str:
 
 @pwndbg.lib.cache.cache_until("start")
 def kversion() -> str:
-    if has_debug_symbols():
-        version_addr = pwndbg.aglib.symbol.lookup_symbol_addr("linux_banner")
-        assert version_addr is not None, "Symbol linux_banner not exists"
-    else:
-        mapping = get_first_kernel_ro()
-        version_addr = list(pwndbg.search.search(b"Linux version", mappings=[mapping]))[0]
-
+    try:
+        if has_debug_symbols():
+            version_addr = pwndbg.aglib.symbol.lookup_symbol_addr("linux_banner")
+            result = pwndbg.aglib.memory.string(version_addr).decode("ascii").strip()
+            assert len(result) > 0
+            return result
+    except Exception:
+        pass
+    mapping = get_first_kernel_ro()
+    version_addr = list(pwndbg.search.search(b"Linux version", mappings=[mapping]))[0]
     return pwndbg.aglib.memory.string(version_addr).decode("ascii").strip()
 
 
