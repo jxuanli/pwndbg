@@ -9,7 +9,7 @@ import sysconfig
 from typing import Tuple
 
 
-def get_gdb_version(path: str) -> Tuple[str, str]:
+def get_gdb_version(path: str) -> Tuple[str, ...]:
     result = subprocess.run(
         [
             path,
@@ -54,7 +54,7 @@ def main():
     sys.argv = gdb_argv
 
     try:
-        from gdb_for_pwndbg.gdb import main
+        from gdb_for_pwndbg.gdb import main  # type: ignore[import-untyped]
 
         main()
         return
